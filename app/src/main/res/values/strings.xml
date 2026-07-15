@@ -2,32 +2,6 @@
 <resources>
     <string name="app_name">English Coach</string>
     <string name="agreement_title">User Agreement &amp; Disclaimer</string>
-    <string name="agreement_text">Welcome to this English speaking practice app.
-
-1. Service Description
-This app contains an AI English coach based on open-source large language models.
-All AI inference runs locally on your device, completely offline.
-This product is for English speaking practice only.
-
-2. AI Content Disclaimer
-AI-generated replies are produced by local models automatically.
-They do not reflect the views of the developer or any organization.
-Due to the limitations of on-device small models, AI may occasionally produce inaccurate or inappropriate content.
-Please use your judgment and do not take everything as absolute truth.
-
-3. Compliance
-You agree not to intentionally induce AI to generate content that is illegal, pornographic, violent, or infringes on others' rights.
-The developer is not responsible for any consequences arising from improper use.
-
-4. Privacy Protection
-This app runs completely offline.
-Your conversation data will not be uploaded to any server, nor collected or shared.
-However, please do not enter bank card passwords, ID numbers, or other sensitive personal information in conversations.
-
-5. Minor Reminder
-If you are a minor, please use this product under the guidance of a guardian.
-
-If you do not agree to the above terms, please exit this app.
-Continuing to use means you have read, understood, and agreed to all terms.</string>
+    <string name="agreement_text">Welcome to this English speaking practice app.\n\n1. Service Description\nThis app contains an AI English coach based on open-source large language models.\nAll AI inference runs locally on your device, completely offline.\nThis product is for English speaking practice only.\n\n2. AI Content Disclaimer\nAI-generated replies are produced by local models automatically.\nThey do not reflect the views of the developer or any organization.\nDue to the limitations of on-device small models, AI may occasionally produce inaccurate or inappropriate content.\nPlease use your judgment and do not take everything as absolute truth.\n\n3. Compliance\nYou agree not to intentionally induce AI to generate content that is illegal, pornographic, violent, or infringes on others rights.\nThe developer is not responsible for any consequences arising from improper use.\n\n4. Privacy Protection\nThis app runs completely offline.\nYour conversation data will not be uploaded to any server, nor collected or shared.\nHowever, please do not enter bank card passwords, ID numbers, or other sensitive personal information in conversations.\n\n5. Minor Reminder\nIf you are a minor, please use this product under the guidance of a guardian.\n\nIf you do not agree to the above terms, please exit this app.\nContinuing to use means you have read, understood, and agreed to all terms.</string>
     <string name="disclaimer">AI generated content is for reference only. Please do not take it as absolute truth or reveal private information.</string>
 </resources>

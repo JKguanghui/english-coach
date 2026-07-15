@@ -6,7 +6,6 @@ import org.vosk.Model;
 import org.vosk.Recognizer;
 import org.vosk.android.RecognitionListener;
 import org.vosk.android.SpeechService;
-import org.vosk.android.StorageService;
 import java.io.IOException;
 
 public class VoskManager {
@@ -30,17 +29,15 @@ public class VoskManager {
 
     public void init(VoskCallback callback) {
         this.callback = callback;
-        StorageService.unpack(context, "model-en-us", "model",
-            (model) -> {
-                this.model = model;
-                initialized = true;
-                Log.i(TAG, "Vosk model loaded");
-                if (callback != null) callback.onReady();
-            },
-            (exception) -> {
-                Log.e(TAG, "Error unpacking model", exception);
-                if (callback != null) callback.onError("Failed to load speech model");
-            });
+        try {
+            model = new Model(ModelDownloadManager.getVoskModelDir(context).getAbsolutePath());
+            initialized = true;
+            Log.i(TAG, "Vosk model loaded");
+            if (callback != null) callback.onReady();
+        } catch (IOException e) {
+            Log.e(TAG, "Error loading model", e);
+            if (callback != null) callback.onError("Failed to load speech model: " + e.getMessage());
+        }
     }
 
     public void startListening() {
@@ -60,7 +57,7 @@ public class VoskManager {
 
                 @Override
                 public void onResult(String hypothesis) {
-                    // This is called for partial results
+                    // Partial result
                 }
 
                 @Override
