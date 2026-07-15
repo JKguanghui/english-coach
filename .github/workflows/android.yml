@@ -37,7 +37,7 @@ jobs:
         mkdir -p build-android
         cd build-android
         
-        # Configure for Android ARM64
+        # Configure for Android ARM64 - disable all tools and tests
         cmake .. \
           -DCMAKE_TOOLCHAIN_FILE=$ANDROID_HOME/ndk/27.2.12479018/build/cmake/android.toolchain.cmake \
           -DANDROID_ABI=arm64-v8a \
@@ -46,10 +46,12 @@ jobs:
           -DGGML_VULKAN=OFF \
           -DLLAMA_BUILD_TESTS=OFF \
           -DLLAMA_BUILD_EXAMPLES=OFF \
-          -DBUILD_SHARED_LIBS=ON
+          -DLLAMA_BUILD_TOOLS=OFF \
+          -DBUILD_SHARED_LIBS=ON \
+          -DLLAMA_CURL=OFF
           
-        # Build
-        make -j$(nproc)
+        # Build only llama and ggml libraries
+        make -j$(nproc) llama ggml
         
     - name: Copy native libraries
       run: |
