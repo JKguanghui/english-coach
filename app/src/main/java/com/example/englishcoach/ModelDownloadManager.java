@@ -15,8 +15,9 @@ public class ModelDownloadManager {
     private static final String TAG = "ModelDownloadManager";
     private Context context;
     private OkHttpClient client = new OkHttpClient.Builder()
-        .connectTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
-        .readTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
+        .connectTimeout(120, java.util.concurrent.TimeUnit.SECONDS)
+        .readTimeout(600, java.util.concurrent.TimeUnit.SECONDS)
+        .retryOnConnectionFailure(true)
         .build();
 
     // Vosk model - use official CDN (works in China)
@@ -53,7 +54,8 @@ public class ModelDownloadManager {
 
     public static boolean isQwenReady(Context context) {
         File f = getQwenModelFile(context);
-        return f.exists() && f.length() > 0;
+        // Qwen 1.5B Q4_K_M should be around 1.1GB, check at least 500MB
+        return f.exists() && f.length() > 500_000_000;
     }
 
     public void downloadVoskModel(DownloadCallback callback) {
@@ -197,9 +199,24 @@ public class ModelDownloadManager {
                 new java.io.FileInputStream(zipFile));
             java.util.zip.ZipEntry entry;
             byte[] buffer = new byte[8192];
+            String topDir = null;
 
             while ((entry = zis.getNextEntry()) != null) {
-                File file = new File(targetDir, entry.getName());
+                String name = entry.getName();
+                
+                // Skip the top-level directory
+                if (topDir == null && entry.isDirectory()) {
+                    topDir = name;
+                    continue;
+                }
+                
+                // Strip top-level directory prefix
+                String relativePath = (topDir != null && name.startsWith(topDir)) 
+                                       ? name.substring(topDir.length()) 
+                                       : name;
+                if (relativePath.isEmpty()) continue;
+                
+                File file = new File(targetDir, relativePath);
                 
                 if (entry.isDirectory()) {
                     file.mkdirs();

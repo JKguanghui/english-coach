@@ -49,6 +49,10 @@ public class TTSManager implements TextToSpeech.OnInitListener {
         }
     }
 
+    public boolean isReady() {
+        return initialized && tts != null;
+    }
+
     public void speak(String text) {
         if (!initialized || tts == null) {
             Log.w(TAG, "TTS not initialized, skipping");

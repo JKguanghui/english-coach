@@ -13,6 +13,7 @@ public class VoskManager {
     private Context context;
     private VoskCallback callback;
     private Model model;
+    private Recognizer recognizer;
     private SpeechService speechService;
     private boolean initialized = false;
 
@@ -31,6 +32,7 @@ public class VoskManager {
         this.callback = callback;
         try {
             model = new Model(ModelDownloadManager.getVoskModelDir(context).getAbsolutePath());
+            recognizer = new Recognizer(model, 16000.0f);
             initialized = true;
             Log.i(TAG, "Vosk model loaded");
             if (callback != null) callback.onReady();
@@ -41,13 +43,12 @@ public class VoskManager {
     }
 
     public void startListening() {
-        if (!initialized || model == null) {
+        if (!initialized || model == null || recognizer == null) {
             if (callback != null) callback.onError("Speech model not ready");
             return;
         }
 
         try {
-            Recognizer recognizer = new Recognizer(model, 16000.0f);
             speechService = new SpeechService(recognizer, 16000.0f);
             speechService.startListening(new RecognitionListener() {
                 @Override
@@ -56,9 +57,7 @@ public class VoskManager {
                 }
 
                 @Override
-                public void onResult(String hypothesis) {
-                    // Partial result
-                }
+                public void onResult(String hypothesis) { }
 
                 @Override
                 public void onFinalResult(String hypothesis) {
@@ -72,12 +71,10 @@ public class VoskManager {
                 }
 
                 @Override
-                public void onTimeout() {
-                    // Silence detected
-                }
+                public void onTimeout() { }
             });
         } catch (IOException e) {
-            Log.e(TAG, "Error creating recognizer", e);
+            Log.e(TAG, "Error creating speech service", e);
             if (callback != null) callback.onError("Failed to start listening");
         }
     }
@@ -92,17 +89,22 @@ public class VoskManager {
     public void pause() {
         if (speechService != null) {
             speechService.stop();
+            speechService = null;
         }
     }
 
     public void resume() {
-        if (speechService != null && initialized) {
+        if (initialized && recognizer != null) {
             startListening();
         }
     }
 
     public void destroy() {
         stopListening();
+        if (recognizer != null) {
+            recognizer.close();
+            recognizer = null;
+        }
         if (model != null) {
             model.close();
             model = null;

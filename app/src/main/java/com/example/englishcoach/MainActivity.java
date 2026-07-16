@@ -61,6 +61,7 @@ public class MainActivity extends AppCompatActivity
     private boolean modelReady = false;
     private boolean callActive = false;
     private final AtomicBoolean llmBusy = new AtomicBoolean(false);
+    private final AtomicBoolean cancelGeneration = new AtomicBoolean(false);
     private Handler handler = new Handler(Looper.getMainLooper());
 
     @Override
@@ -120,7 +121,10 @@ public class MainActivity extends AppCompatActivity
             new Thread(() -> {
                 boolean ok = llmEngine.loadModel();
                 handler.post(() -> {
-                    if (!ok) tvStatus.setText("Model load failed");
+                    if (!ok) {
+                        tvStatus.setText("Model load failed");
+                        btnStart.setEnabled(false);
+                    }
                 });
             }).start();
             voskManager.init(this);
@@ -171,6 +175,7 @@ public class MainActivity extends AppCompatActivity
 
     private void toggleCall() {
         if (!modelReady) { Toast.makeText(this, "Please wait for models", Toast.LENGTH_SHORT).show(); return; }
+        if (!ttsManager.isReady()) { Toast.makeText(this, "TTS still loading, please wait", Toast.LENGTH_SHORT).show(); return; }
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.RECORD_AUDIO}, REQ_AUDIO);
             return;
@@ -180,6 +185,7 @@ public class MainActivity extends AppCompatActivity
 
     private void startCall() {
         callActive = true;
+        cancelGeneration.set(false);
         btnStart.setText("End Call");
         tvUserSubtitle.setText("");
         tvAiSubtitle.setText("");
@@ -190,6 +196,7 @@ public class MainActivity extends AppCompatActivity
 
     private void stopCall() {
         callActive = false;
+        cancelGeneration.set(true);
         btnStart.setText("Start Call");
         voskManager.stopListening();
         ttsManager.stop();
@@ -204,11 +211,28 @@ public class MainActivity extends AppCompatActivity
     public void onFinalResult(String text) {
         handler.post(() -> {
             tvUserSubtitle.setText(text);
-            if (!text.isEmpty() && !llmBusy.get()) {
+            if (!text.isEmpty() && !llmBusy.get() && callActive) {
                 llmBusy.set(true);
+                cancelGeneration.set(false);
                 voskManager.pause();
                 new Thread(() -> {
+                    // Check before generating
+                    if (!callActive || cancelGeneration.get()) {
+                        handler.post(() -> {
+                            llmBusy.set(false);
+                            if (callActive) voskManager.resume();
+                        });
+                        return;
+                    }
                     String resp = llmEngine.generate(SYSTEM_PROMPT, text);
+                    // Check after generating
+                    if (!callActive || cancelGeneration.get()) {
+                        handler.post(() -> {
+                            llmBusy.set(false);
+                            if (callActive) voskManager.resume();
+                        });
+                        return;
+                    }
                     handler.post(() -> appendAiSubtitle(resp + "\n"));
                     ttsManager.speak(resp);
                 }).start();
@@ -220,7 +244,9 @@ public class MainActivity extends AppCompatActivity
     // TTSListener
     public void onSpeakEnd() {
         llmBusy.set(false);
-        if (callActive) voskManager.resume();
+        if (callActive) {
+            voskManager.resume();
+        }
     }
 
     private void appendAiSubtitle(String text) {
