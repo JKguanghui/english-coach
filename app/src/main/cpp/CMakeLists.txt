@@ -7,7 +7,7 @@ add_library(llama-android SHARED llama-bridge.c)
 target_include_directories(llama-android PRIVATE ${CMAKE_SOURCE_DIR}/llama-include)
 
 # Link against the pre-built llama library
-set(LIB_DIR ${CMAKE_SOURCE_DIR}/../../../jniLibs/${ANDROID_ABI})
+set(LIB_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../jniLibs/${ANDROID_ABI})
 add_library(llama SHARED IMPORTED)
 set_target_properties(llama PROPERTIES IMPORTED_LOCATION ${LIB_DIR}/libllama.so)
 
