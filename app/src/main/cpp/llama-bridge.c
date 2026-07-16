@@ -13,7 +13,7 @@ Java_com_example_englishcoach_LLMEngine_nativeCreate(JNIEnv *env, jobject thiz, 
     const char *path = (*env)->GetStringUTFChars(env, modelPath, NULL);
 
     struct llama_model_params model_params = llama_model_default_params();
-    struct llama_model *model = llama_model_load_from_file(path, model_params);
+    struct llama_model *model = llama_load_model_from_file(path, model_params);
 
     (*env)->ReleaseStringUTFChars(env, modelPath, path);
 
@@ -25,10 +25,10 @@ Java_com_example_englishcoach_LLMEngine_nativeCreate(JNIEnv *env, jobject thiz, 
     ctx_params.n_ctx = contextSize;
     ctx_params.n_batch = 512;
 
-    struct llama_context *ctx = llama_init_from_model(model, ctx_params);
+    struct llama_context *ctx = llama_new_context_with_model(model, ctx_params);
 
     if (ctx == NULL) {
-        llama_model_free(model);
+        llama_free_model(model);
         return 0;
     }
 
@@ -50,7 +50,7 @@ Java_com_example_englishcoach_LLMEngine_nativeGenerate(JNIEnv *env, jobject thiz
     const char *promptStr = (*env)->GetStringUTFChars(env, prompt, NULL);
 
     llama_token tokens[4096];
-    int n_tokens = llama_tokenize(state->ctx, promptStr, strlen(promptStr), tokens, 4096, true, true);
+    int n_tokens = llama_tokenize(state->model, promptStr, strlen(promptStr), tokens, 4096, true, true);
 
     (*env)->ReleaseStringUTFChars(env, prompt, promptStr);
 
@@ -60,22 +60,36 @@ Java_com_example_englishcoach_LLMEngine_nativeGenerate(JNIEnv *env, jobject thiz
 
     llama_kv_cache_clear(state->ctx);
 
-    if (llama_decode(state->ctx, llama_batch_get_one(tokens, n_tokens))) {
+    if (llama_decode(state->ctx, llama_batch_get_one(tokens, n_tokens, 0, 0))) {
         return (*env)->NewStringUTF(env, "Error: prompt evaluation failed");
     }
 
     char response[4096] = {0};
     int resp_len = 0;
+    llama_token eos = llama_token_eos(state->model);
 
     for (int i = 0; i < maxTokens && resp_len < 4095; i++) {
-        llama_token new_token = llama_sampler_sample(NULL, state->ctx, -1);
+        // Get logits for the last token
+        float *logits = llama_get_logits(state->ctx);
+        int n_vocab = llama_n_vocab(state->model);
 
-        if (llama_token_is_eog(state->model, new_token)) {
+        // Find the token with highest logit (greedy)
+        llama_token new_token = 0;
+        float max_logit = logits[0];
+        for (int v = 1; v < n_vocab; v++) {
+            if (logits[v] > max_logit) {
+                max_logit = logits[v];
+                new_token = v;
+            }
+        }
+
+        if (new_token == eos) {
             break;
         }
 
+        // Convert token to text
         char buf[256];
-        int n = llama_token_to_piece(state->model, new_token, buf, sizeof(buf) - 1, 0, true);
+        int n = llama_token_to_piece(state->model, new_token, buf, sizeof(buf) - 1);
         if (n > 0) {
             buf[n] = 0;
             int copy_len = n;
@@ -84,7 +98,8 @@ Java_com_example_englishcoach_LLMEngine_nativeGenerate(JNIEnv *env, jobject thiz
             resp_len += copy_len;
         }
 
-        llama_batch batch = llama_batch_get_one(&new_token, 1);
+        // Feed the new token back
+        llama_batch batch = llama_batch_get_one(&new_token, 1, 0, 0);
         if (llama_decode(state->ctx, batch)) {
             break;
         }
@@ -100,7 +115,7 @@ Java_com_example_englishcoach_LLMEngine_nativeDestroy(JNIEnv *env, jobject thiz,
 
     if (state != NULL) {
         if (state->ctx) llama_free(state->ctx);
-        if (state->model) llama_model_free(state->model);
+        if (state->model) llama_free_model(state->model);
         free(state);
     }
 }
