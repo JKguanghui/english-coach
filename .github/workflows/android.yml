@@ -31,7 +31,7 @@ jobs:
       run: |
         git clone https://github.com/ggerganov/llama.cpp.git
         cd llama.cpp
-        git checkout b2565
+        git checkout b2566
         
     - name: Build llama.cpp for Android
       run: |
