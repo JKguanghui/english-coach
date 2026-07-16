@@ -70,7 +70,9 @@ jobs:
           cp llama.cpp/build-android/libggml-cpu.so app/src/main/jniLibs/arm64-v8a/ 2>/dev/null || true
         # Find and copy headers
         find llama.cpp -name "llama.h" -exec cp {} app/src/main/cpp/llama-include/ \;
-        find llama.cpp -name "ggml.h" -exec cp {} app/src/main/cpp/llama-include/ \; 2>/dev/null || true
+        find llama.cpp -name "ggml*.h" -exec cp {} app/src/main/cpp/llama-include/ \; 2>/dev/null || true
+        # Copy all .h files from root of llama.cpp (b2566 structure)
+        cp llama.cpp/*.h app/src/main/cpp/llama-include/ 2>/dev/null || true
         ls -la app/src/main/jniLibs/arm64-v8a/
         ls -la app/src/main/cpp/llama-include/
         
