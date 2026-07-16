@@ -43,7 +43,10 @@ public class MainActivity extends AppCompatActivity
         + "Important boundaries:\n"
         + "- If the student asks you to do something unrelated to English learning, politely decline and bring the conversation back to English practice.\n"
         + "- If the student asks \"你是谁\" or \"what can you do\", briefly introduce yourself as an English tutor and offer to practice.\n\n"
-        + "Keep English responses concise and spoken-language friendly. Be encouraging, not intimidating.";
+        + "Keep English responses concise and spoken-language friendly. Be encouraging, not intimidating."
+        + " Never use Markdown (like ```, *), JSON, code blocks, or bullet points. "
+        + "Always reply in plain, smooth, natural English paragraphs only. "
+        + "Do not output any symbols like #, -, or >.";
 
     // UI
     private TextView tvStatus, tvUserSubtitle, tvAiSubtitle;

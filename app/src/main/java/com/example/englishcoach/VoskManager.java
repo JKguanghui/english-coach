@@ -53,7 +53,16 @@ public class VoskManager {
             speechService.startListening(new RecognitionListener() {
                 @Override
                 public void onPartialResult(String hypothesis) {
-                    if (callback != null) callback.onPartialResult(hypothesis);
+                    if (callback != null) {
+                        String text = "";
+                        try {
+                            org.json.JSONObject json = new org.json.JSONObject(hypothesis);
+                            text = json.optString("partial", "");
+                        } catch (Exception e) {
+                            text = hypothesis;
+                        }
+                        callback.onPartialResult(text);
+                    }
                 }
 
                 @Override
@@ -61,7 +70,16 @@ public class VoskManager {
 
                 @Override
                 public void onFinalResult(String hypothesis) {
-                    if (callback != null) callback.onFinalResult(hypothesis);
+                    if (callback != null) {
+                        String text = "";
+                        try {
+                            org.json.JSONObject json = new org.json.JSONObject(hypothesis);
+                            text = json.optString("text", "");
+                        } catch (Exception e) {
+                            text = hypothesis;
+                        }
+                        callback.onFinalResult(text);
+                    }
                 }
 
                 @Override
