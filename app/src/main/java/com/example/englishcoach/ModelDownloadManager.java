@@ -14,13 +14,17 @@ import okhttp3.ResponseBody;
 public class ModelDownloadManager {
     private static final String TAG = "ModelDownloadManager";
     private Context context;
-    private OkHttpClient client = new OkHttpClient();
+    private OkHttpClient client = new OkHttpClient.Builder()
+        .connectTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
+        .readTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
+        .build();
 
-    // Model URLs - Chinese mirror first, HuggingFace fallback
-    private static final String VOSK_MODEL_URL_CN = "https://huggingface.co/alphacep/vosk-model-small-en-us/resolve/main/vosk-model-small-en-us-0.15.zip";
+    // Vosk model - use official CDN (works in China)
+    private static final String VOSK_MODEL_URL_CN = "https://alphacephei.com/vosk/models/vosk-model-small-en-us-0.15.zip";
     private static final String VOSK_MODEL_URL_HF = "https://huggingface.co/alphacep/vosk-model-small-en-us/resolve/main/vosk-model-small-en-us-0.15.zip";
     
-    private static final String QWEN_MODEL_URL_CN = "https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF/resolve/main/qwen2.5-1.5b-instruct-q4_k_m.gguf";
+    // Qwen model - use ModelScope (Chinese HuggingFace) first, then HuggingFace
+    private static final String QWEN_MODEL_URL_CN = "https://modelscope.cn/api/v1/models/Qwen/Qwen2.5-1.5B-Instruct-GGUF/repo?Revision=master&FilePath=qwen2.5-1.5b-instruct-q4_k_m.gguf";
     private static final String QWEN_MODEL_URL_HF = "https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF/resolve/main/qwen2.5-1.5b-instruct-q4_k_m.gguf";
 
     public interface DownloadCallback {
@@ -43,11 +47,13 @@ public class ModelDownloadManager {
     }
 
     public static boolean isVoskReady(Context context) {
-        return getVoskModelDir(context).exists() && getVoskModelDir(context).listFiles().length > 0;
+        File dir = getVoskModelDir(context);
+        return dir.exists() && dir.listFiles() != null && dir.listFiles().length > 0;
     }
 
     public static boolean isQwenReady(Context context) {
-        return getQwenModelFile(context).exists() && getQwenModelFile(context).length() > 0;
+        File f = getQwenModelFile(context);
+        return f.exists() && f.length() > 0;
     }
 
     public void downloadVoskModel(DownloadCallback callback) {
@@ -66,15 +72,13 @@ public class ModelDownloadManager {
 
                 @Override
                 public void onSuccess(File file) {
-                    // Unzip model
                     callback.onStatusUpdate("Extracting speech model...");
                     unzipModel(file, getVoskModelDir(context), callback);
                 }
 
                 @Override
                 public void onError(String error) {
-                    // Try HuggingFace
-                    callback.onStatusUpdate("Retrying from HuggingFace...");
+                    callback.onStatusUpdate("Retrying from backup...");
                     downloadFile(VOSK_MODEL_URL_HF, new File(context.getFilesDir(), "vosk-model.zip"),
                         new DownloadCallback() {
                             @Override
@@ -116,7 +120,6 @@ public class ModelDownloadManager {
 
                 @Override
                 public void onError(String error) {
-                    // Try HuggingFace
                     callback.onStatusUpdate("Retrying from HuggingFace...");
                     downloadFile(QWEN_MODEL_URL_HF, getQwenModelFile(context),
                         new DownloadCallback() {
@@ -141,11 +144,14 @@ public class ModelDownloadManager {
     private void downloadFile(String url, File outputFile, DownloadCallback callback) {
         new Thread(() -> {
             try {
-                Request request = new Request.Builder().url(url).build();
+                Request request = new Request.Builder()
+                    .url(url)
+                    .addHeader("User-Agent", "Mozilla/5.0")
+                    .build();
                 Response response = client.newCall(request).execute();
                 
                 if (!response.isSuccessful()) {
-                    callback.onError("Download failed: " + response.code());
+                    callback.onError("Download failed: HTTP " + response.code());
                     return;
                 }
 
@@ -186,7 +192,6 @@ public class ModelDownloadManager {
     }
 
     private void unzipModel(File zipFile, File targetDir, DownloadCallback callback) {
-        // Simple unzip implementation
         try {
             java.util.zip.ZipInputStream zis = new java.util.zip.ZipInputStream(
                 new java.io.FileInputStream(zipFile));
@@ -210,7 +215,6 @@ public class ModelDownloadManager {
             }
             zis.close();
             
-            // Delete zip file
             zipFile.delete();
             
             callback.onSuccess(targetDir);

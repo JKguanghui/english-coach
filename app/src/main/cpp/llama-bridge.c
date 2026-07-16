@@ -3,6 +3,11 @@
 #include <stdlib.h>
 #include "llama.h"
 
+typedef struct {
+    struct llama_model *model;
+    struct llama_context *ctx;
+} LlamaState;
+
 JNIEXPORT jlong JNICALL
 Java_com_example_englishcoach_LLMEngine_nativeCreate(JNIEnv *env, jobject thiz, jstring modelPath, jint contextSize) {
     const char *path = (*env)->GetStringUTFChars(env, modelPath, NULL);
@@ -27,11 +32,7 @@ Java_com_example_englishcoach_LLMEngine_nativeCreate(JNIEnv *env, jobject thiz, 
         return 0;
     }
 
-    // Pack both pointers into a single allocated struct
-    struct {
-        struct llama_model *model;
-        struct llama_context *ctx;
-    } *state = malloc(sizeof(*state));
+    LlamaState *state = malloc(sizeof(LlamaState));
     state->model = model;
     state->ctx = ctx;
 
@@ -40,10 +41,7 @@ Java_com_example_englishcoach_LLMEngine_nativeCreate(JNIEnv *env, jobject thiz, 
 
 JNIEXPORT jstring JNICALL
 Java_com_example_englishcoach_LLMEngine_nativeGenerate(JNIEnv *env, jobject thiz, jlong modelPtr, jstring prompt, jint maxTokens) {
-    struct {
-        struct llama_model *model;
-        struct llama_context *ctx;
-    } *state = (void *)(intptr_t)modelPtr;
+    LlamaState *state = (LlamaState *)(intptr_t)modelPtr;
 
     if (state == NULL || state->ctx == NULL) {
         return (*env)->NewStringUTF(env, "Error: model not loaded");
@@ -51,7 +49,6 @@ Java_com_example_englishcoach_LLMEngine_nativeGenerate(JNIEnv *env, jobject thiz
 
     const char *promptStr = (*env)->GetStringUTFChars(env, prompt, NULL);
 
-    // Tokenize prompt
     llama_token tokens[4096];
     int n_tokens = llama_tokenize(state->ctx, promptStr, strlen(promptStr), tokens, 4096, true, true);
 
@@ -61,18 +58,14 @@ Java_com_example_englishcoach_LLMEngine_nativeGenerate(JNIEnv *env, jobject thiz
         return (*env)->NewStringUTF(env, "Error: tokenization failed");
     }
 
-    // Clear KV cache
     llama_kv_cache_clear(state->ctx);
 
-    // Evaluate prompt tokens
     if (llama_decode(state->ctx, llama_batch_get_one(tokens, n_tokens))) {
         return (*env)->NewStringUTF(env, "Error: prompt evaluation failed");
     }
 
-    // Generate response
     char response[4096] = {0};
     int resp_len = 0;
-    int n_past = n_tokens;
 
     for (int i = 0; i < maxTokens && resp_len < 4095; i++) {
         llama_token new_token = llama_sampler_sample(NULL, state->ctx, -1);
@@ -91,8 +84,6 @@ Java_com_example_englishcoach_LLMEngine_nativeGenerate(JNIEnv *env, jobject thiz
             resp_len += copy_len;
         }
 
-        // Feed the new token back
-        n_past++;
         llama_batch batch = llama_batch_get_one(&new_token, 1);
         if (llama_decode(state->ctx, batch)) {
             break;
@@ -105,10 +96,7 @@ Java_com_example_englishcoach_LLMEngine_nativeGenerate(JNIEnv *env, jobject thiz
 
 JNIEXPORT void JNICALL
 Java_com_example_englishcoach_LLMEngine_nativeDestroy(JNIEnv *env, jobject thiz, jlong modelPtr) {
-    struct {
-        struct llama_model *model;
-        struct llama_context *ctx;
-    } *state = (void *)(intptr_t)modelPtr;
+    LlamaState *state = (LlamaState *)(intptr_t)modelPtr;
 
     if (state != NULL) {
         if (state->ctx) llama_free(state->ctx);

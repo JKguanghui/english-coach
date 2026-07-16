@@ -6,12 +6,16 @@ add_library(llama-android SHARED llama-bridge.c)
 # Include directory with llama.h (copied during CI)
 target_include_directories(llama-android PRIVATE ${CMAKE_SOURCE_DIR}/llama-include)
 
-# Link against the pre-built llama and ggml libraries
+# Link against the pre-built llama library
 set(LIB_DIR ${CMAKE_SOURCE_DIR}/../../../jniLibs/${ANDROID_ABI})
 add_library(llama SHARED IMPORTED)
 set_target_properties(llama PROPERTIES IMPORTED_LOCATION ${LIB_DIR}/libllama.so)
 
-add_library(ggml SHARED IMPORTED)
-set_target_properties(ggml PROPERTIES IMPORTED_LOCATION ${LIB_DIR}/libggml.so)
-
-target_link_libraries(llama-android llama ggml log)
+# ggml - only link if it exists
+if(EXISTS ${LIB_DIR}/libggml.so)
+    add_library(ggml SHARED IMPORTED)
+    set_target_properties(ggml PROPERTIES IMPORTED_LOCATION ${LIB_DIR}/libggml.so)
+    target_link_libraries(llama-android llama ggml log)
+else()
+    target_link_libraries(llama-android llama log)
+endif()
