@@ -98,8 +98,8 @@ Java_com_example_englishcoach_LLMEngine_nativeGenerate(JNIEnv *env, jobject thiz
             resp_len += copy_len;
         }
 
-        // Feed the new token back
-        llama_batch batch = llama_batch_get_one(&new_token, 1, 0, 0);
+        // Feed the new token back with correct position
+        llama_batch batch = llama_batch_get_one(&new_token, 1, n_tokens + i, 0);
         if (llama_decode(state->ctx, batch)) {
             break;
         }
